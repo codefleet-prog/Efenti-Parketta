@@ -297,7 +297,137 @@
             padding: 16px 40px;
         }
 
-        @media (max-width: 992px) {
+        /* --- Slider & Lightbox CSS --- */
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #eee;
+        }
+        .slider-track {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        .slider-track img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .slider-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        .slider-container:hover .slider-btn {
+            opacity: 1;
+        }
+        .slider-btn:hover {
+            background: rgba(0,0,0,0.8);
+        }
+        .slider-btn.prev { left: 10px; }
+        .slider-btn.next { right: 10px; }
+
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            flex-direction: column;
+        }
+        .lightbox-overlay.open {
+            display: flex;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            z-index: 10000;
+        }
+        .lightbox-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 85vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox-img {
+            max-width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .lightbox-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .lightbox-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .lightbox-btn.prev { left: -70px; }
+        .lightbox-btn.next { right: -70px; }
+        .lightbox-indicators {
+            margin-top: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        .lightbox-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+        }
+        .lightbox-dot.active {
+            background: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .lightbox-btn.prev { left: 10px; }
+            .lightbox-btn.next { right: 10px; }
+        }
             .products-grid {
                 grid-template-columns: 1fr;
                 max-width: 520px;
@@ -424,6 +554,17 @@
             </div>
         </div>
     </footer>
+
+    <!-- Lightbox Modal -->
+    <div class="lightbox-overlay" id="lightbox">
+        <button class="lightbox-close" id="lightbox-close"><i class="fas fa-times"></i></button>
+        <div class="lightbox-content">
+            <button class="lightbox-btn prev" id="lightbox-prev"><i class="fas fa-chevron-left"></i></button>
+            <img class="lightbox-img" id="lightbox-img" src="" alt="Nagyított kép">
+            <button class="lightbox-btn next" id="lightbox-next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="lightbox-indicators" id="lightbox-indicators"></div>
+    </div>
 
     <script src="js/main.js"></script>
     <script>
@@ -573,10 +714,27 @@
 
                     var card = document.createElement('div');
                     card.className = 'product-card';
+                    
+                    var images = Array.isArray(p.images) && p.images.length ? p.images : (p.image ? [p.image] : ['images/laminate.png']);
+                    
+                    var sliderHtml = '<div class="slider-container" data-images=\'' + escHtml(JSON.stringify(images)) + '\'>';
+                    sliderHtml += '<div class="slider-track" style="width:' + (images.length * 100) + '%">';
+                    images.forEach(function(imgSrc, idx) {
+                        sliderHtml += '<img src="' + escHtml(imgSrc) + '" alt="' + escHtml(p.name) + '" onerror="this.src=\'images/laminate.png\'" style="width:' + (100 / images.length) + '%">';
+                    });
+                    sliderHtml += '</div>';
+                    if (images.length > 1) {
+                        sliderHtml += '<button class="slider-btn prev"><i class="fas fa-chevron-left"></i></button>';
+                        sliderHtml += '<button class="slider-btn next"><i class="fas fa-chevron-right"></i></button>';
+                    }
+                    if (p.badge) {
+                        sliderHtml += '<span class="product-badge">' + escHtml(p.badge) + '</span>';
+                    }
+                    sliderHtml += '</div>';
+
                     card.innerHTML =
                         '<div class="product-image">' +
-                            '<img src="' + escHtml(p.image) + '" alt="' + escHtml(p.name) + '" onerror="this.src=\'images/laminate.png\'">' +
-                            (p.badge ? '<span class="product-badge">' + escHtml(p.badge) + '</span>' : '') +
+                            sliderHtml +
                         '</div>' +
                         '<div class="product-body">' +
                             '<h3>' + escHtml(p.name) + '</h3>' +
@@ -587,7 +745,102 @@
                         '</div>';
                     container.appendChild(card);
                 });
+
+                // Attach slider logic
+                var sliders = container.querySelectorAll('.slider-container');
+                sliders.forEach(function(slider) {
+                    var imagesData = JSON.parse(slider.getAttribute('data-images') || '[]');
+                    var track = slider.querySelector('.slider-track');
+                    var btnPrev = slider.querySelector('.slider-btn.prev');
+                    var btnNext = slider.querySelector('.slider-btn.next');
+                    var imgs = track.querySelectorAll('img');
+                    var currentIdx = 0;
+                    
+                    function updateSlider() {
+                        var offset = -(currentIdx * (100 / imagesData.length));
+                        track.style.transform = 'translateX(' + offset + '%)';
+                    }
+                    
+                    if (btnPrev && btnNext) {
+                        btnPrev.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            currentIdx = (currentIdx === 0) ? imagesData.length - 1 : currentIdx - 1;
+                            updateSlider();
+                        });
+                        btnNext.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            currentIdx = (currentIdx === imagesData.length - 1) ? 0 : currentIdx + 1;
+                            updateSlider();
+                        });
+                    }
+                    
+                    // Lightbox click
+                    imgs.forEach(function(img, idx) {
+                        img.addEventListener('click', function() {
+                            openLightbox(imagesData, idx);
+                        });
+                    });
+                });
             }
+
+            // Lightbox functionality
+            var lbOverlay = document.getElementById('lightbox');
+            var lbImg = document.getElementById('lightbox-img');
+            var lbClose = document.getElementById('lightbox-close');
+            var lbPrev = document.getElementById('lightbox-prev');
+            var lbNext = document.getElementById('lightbox-next');
+            var lbInds = document.getElementById('lightbox-indicators');
+            
+            var lbImages = [];
+            var lbCurrentIdx = 0;
+
+            function openLightbox(images, startIndex) {
+                lbImages = images;
+                lbCurrentIdx = startIndex;
+                updateLightbox();
+                lbOverlay.classList.add('open');
+                
+                if (lbImages.length > 1) {
+                    lbPrev.style.display = 'flex';
+                    lbNext.style.display = 'flex';
+                } else {
+                    lbPrev.style.display = 'none';
+                    lbNext.style.display = 'none';
+                }
+            }
+
+            function updateLightbox() {
+                lbImg.src = lbImages[lbCurrentIdx];
+                lbInds.innerHTML = '';
+                if (lbImages.length > 1) {
+                    lbImages.forEach(function(_, idx) {
+                        var dot = document.createElement('div');
+                        dot.className = 'lightbox-dot' + (idx === lbCurrentIdx ? ' active' : '');
+                        dot.addEventListener('click', function() {
+                            lbCurrentIdx = idx;
+                            updateLightbox();
+                        });
+                        lbInds.appendChild(dot);
+                    });
+                }
+            }
+
+            lbClose.addEventListener('click', function() {
+                lbOverlay.classList.remove('open');
+            });
+            lbPrev.addEventListener('click', function() {
+                lbCurrentIdx = (lbCurrentIdx === 0) ? lbImages.length - 1 : lbCurrentIdx - 1;
+                updateLightbox();
+            });
+            lbNext.addEventListener('click', function() {
+                lbCurrentIdx = (lbCurrentIdx === lbImages.length - 1) ? 0 : lbCurrentIdx + 1;
+                updateLightbox();
+            });
+            lbOverlay.addEventListener('click', function(e) {
+                if (e.target === lbOverlay || e.target === lbOverlay.querySelector('.lightbox-content')) {
+                    lbOverlay.classList.remove('open');
+                }
+            });
 
             /* Wire up search */
             searchInput.addEventListener('input', render);

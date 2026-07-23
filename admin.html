@@ -602,16 +602,17 @@
       </div>
 
       <div class="form-group full">
-        <label>Kép <span class="hint">(opcionális)</span></label>
+        <label>Képek <span class="hint">(több is kiválasztható)</span></label>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
           <label class="btn btn-ghost btn-sm" for="f-image-file" style="cursor:pointer;white-space:nowrap">
             <i class="fas fa-upload"></i> Feltöltés
           </label>
-          <input type="file" id="f-image-file" accept="image/*" style="display:none">
-          <span style="color:#aaa;font-size:.82rem">— vagy add meg az elérési útvonalat:</span>
+          <input type="file" id="f-image-file" accept="image/*" multiple style="display:none">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-add-url" style="white-space:nowrap">
+            <i class="fas fa-link"></i> URL megadása
+          </button>
         </div>
-        <input type="text" class="form-control" id="f-image" placeholder="images/laminate.png (opcionális)">
-        <img id="img-preview" class="img-preview" alt="Előnézet">
+        <div id="img-preview-container" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
       </div>
 
       <div class="form-group full">
@@ -867,37 +868,86 @@
     }
   }
 
-  document.getElementById('f-image').addEventListener('input', function () { updateImgPreview(this.value.trim()); });
+  var uploadedImages = [];
+
+  document.getElementById('btn-add-url').addEventListener('click', function() {
+    var url = prompt("Kép URL megadása (pl. images/laminate.png):");
+    if (url && url.trim()) {
+      uploadedImages.push(url.trim());
+      renderImgPreviews();
+    }
+  });
 
   document.getElementById('f-image-file').addEventListener('change', function () {
-    var file = this.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var img = new Image();
-      img.onload = function () {
-        var MAX = 900, w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else        { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        var canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        document.getElementById('f-image').value = dataUrl;
-        updateImgPreview(dataUrl);
+    var files = Array.from(this.files);
+    if (!files.length) return;
+    
+    files.forEach(function(file) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var MAX = 900, w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else        { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          uploadedImages.push(dataUrl);
+          renderImgPreviews();
+        };
+        img.src = e.target.result;
       };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
     this.value = '';
   });
 
-  function updateImgPreview(src) {
-    var preview = document.getElementById('img-preview');
-    preview.src = src;
-    preview.className = src ? 'img-preview visible' : 'img-preview';
+  function renderImgPreviews() {
+    var container = document.getElementById('img-preview-container');
+    container.innerHTML = '';
+    uploadedImages.forEach(function(src, idx) {
+      var wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      wrapper.style.width = '100px';
+      wrapper.style.height = '100px';
+      
+      var img = document.createElement('img');
+      img.src = src;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '8px';
+      img.style.border = '1.5px solid #E2E8F0';
+      
+      var delBtn = document.createElement('button');
+      delBtn.innerHTML = '<i class="fas fa-times"></i>';
+      delBtn.style.position = 'absolute';
+      delBtn.style.top = '4px';
+      delBtn.style.right = '4px';
+      delBtn.style.background = 'var(--danger)';
+      delBtn.style.color = 'white';
+      delBtn.style.border = 'none';
+      delBtn.style.borderRadius = '50%';
+      delBtn.style.width = '24px';
+      delBtn.style.height = '24px';
+      delBtn.style.cursor = 'pointer';
+      delBtn.style.display = 'flex';
+      delBtn.style.alignItems = 'center';
+      delBtn.style.justifyContent = 'center';
+      delBtn.style.fontSize = '12px';
+      delBtn.onclick = function() {
+        uploadedImages.splice(idx, 1);
+        renderImgPreviews();
+      };
+      
+      wrapper.appendChild(img);
+      wrapper.appendChild(delBtn);
+      container.appendChild(wrapper);
+    });
   }
 
   function openAdd() {
@@ -905,6 +955,8 @@
     document.getElementById('edit-id').value = '';
     clearForm();
     document.getElementById('f-active').checked = true;
+    uploadedImages = [];
+    renderImgPreviews();
     openModal();
   }
 
@@ -917,14 +969,14 @@
     document.getElementById('f-category').value    = p.category || '';
     document.getElementById('f-badge').value       = p.badge || '';
     document.getElementById('f-price').value       = (p.price || '').replace(/\s*Ft\s*\/\s*m²\s*$/, '').trim();
-    document.getElementById('f-image').value       = p.image || '';
     document.getElementById('f-description').value = p.description || '';
     document.getElementById('f-specs').value       = (p.specs || []).join('\n');
     document.getElementById('f-brand').value       = p.brand || '';
     document.getElementById('f-surface_finish').value = p.surface_finish || '';
     document.getElementById('f-wood_type').value   = p.wood_type || '';
     document.getElementById('f-active').checked    = !!p.active;
-    updateImgPreview(p.image || '');
+    uploadedImages = Array.isArray(p.images) && p.images.length ? [...p.images] : (p.image ? [p.image] : []);
+    renderImgPreviews();
     updateDynamicFields();
     openModal();
   }
@@ -945,7 +997,8 @@
       category:    cat,
       badge:       document.getElementById('f-badge').value.trim() || null,
       price:       priceRaw ? priceRaw + ' Ft / m²' : null,
-      image:       document.getElementById('f-image').value.trim() || null,
+      image:       uploadedImages.length > 0 ? uploadedImages[0] : null,
+      images:      uploadedImages,
       description: desc,
       specs:       specs,
       brand:       document.getElementById('f-brand').value.trim() || null,
@@ -972,10 +1025,9 @@
   });
 
   function clearForm() {
-    ['f-name','f-category','f-badge','f-price','f-image','f-description','f-specs', 'f-brand', 'f-surface_finish', 'f-wood_type']
+    ['f-name','f-category','f-badge','f-price','f-description','f-specs', 'f-brand', 'f-surface_finish', 'f-wood_type']
       .forEach(function (id) { document.getElementById(id).value = ''; });
     updateDynamicFields();
-    updateImgPreview('');
   }
 
   /* ─────────────────────────────────────────
